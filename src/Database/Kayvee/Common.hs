@@ -1,6 +1,8 @@
 module Database.Kayvee.Common where
 
+import Prelude hiding (catch)
 import Control.Applicative((<$>))
+import Control.Exception
 import Data.Hash.MD5
 import Data.Word
 import Data.Binary.Get
@@ -13,6 +15,7 @@ import qualified Data.ByteString.Char8 as BC
 import qualified Data.ByteString.Internal as BS (c2w, w2c)
 import System.Directory
 import System.IO
+import System.IO.Error hiding (catch)
 import System.Posix.Types
 import System.Posix.Files
 import Debug.Trace
@@ -158,3 +161,12 @@ bsToSize bs =
                 .|. shiftL b6 8
                 .|. shiftL b7 0
         xs -> error $ "malformed size " ++ show bs ++ " of length " ++ show (length xs)
+
+removeIfExists :: FilePath -> IO ()
+removeIfExists fileName = removeFile fileName `catch` handleExists
+  where handleExists e
+          | isDoesNotExistError e = return ()
+          | otherwise = throwIO e
+
+moveFile :: FilePath -> FilePath -> IO ()
+moveFile x y = renameFile x y

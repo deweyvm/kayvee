@@ -2,6 +2,11 @@
 module Database.Kayvee.GC where
 
 import Control.Applicative((<$>))
+import Data.ByteString.Char8 (pack)
+import qualified Data.ByteString.Lazy as BL
+import Data.List (genericLength)
+import Data.Word
+import Data.Binary.Put
 
 import Database.Kayvee.Kayvee
 import Database.Kayvee.Common
@@ -60,13 +65,21 @@ getKey ptr = do
     toString <$> readAt dbPath (ptr + ptrSize) size
 
 addKey :: String -> IO ()
-addKey key = return ()
+addKey key = do
+    let size = genericLength key :: Word64
+    BL.appendFile keyLog $ runPut $ helper size key
+    where helper :: Word64 -> String -> Put
+          helper size str = do
+              putWord64be size
+              putByteString (pack str)
 
-insertSchema :: String -> IO ()
-insertSchema key = return ()
+insertSchema :: String -> Pointer -> IO ()
+insertSchema key ptr =
+    BL.appendFile tempSchema $ runPut $ hashPut key ptr
 
 insertValue :: String -> String -> IO ()
-insertValue key value = return ()
+insertValue key value =
+    BL.appendFile tempDb $ runPut $ valuePut key value
 
 processKey :: Hash -> Pointer -> IO ()
 processKey hash ptr = do
@@ -76,7 +89,8 @@ processKey hash ptr = do
     if exists
     then return ()
     else do addKey key
-            insertSchema key
+            size <- fromInteger . toInteger <$> getSize tempDb
+            insertSchema key size
             valuem <- get key
             case valuem of
                 Just value -> insertValue key value
@@ -84,15 +98,15 @@ processKey hash ptr = do
 
 
 flipDbs :: IO ()
-flipDbs = return ()
-    -- delete keylog
-    -- copy tempSchema to schema
-    -- copy tempDb to db
-    -- delete tempSchema
-    -- delete tempDb
+flipDbs = do
+    removeIfExists keyLog
+    moveFile tempSchema schemaPath
+    moveFile tempDb dbPath
 
 runGc :: IO ()
 runGc = do
     createIfNotExists keyLog
+    createIfNotExists tempDb
+    createIfNotExists tempSchema
     iterateSchema processKey
     flipDbs
