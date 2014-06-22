@@ -1,6 +1,6 @@
 
 import Database.Kayvee.Kayvee
-
+import Database.Kayvee.GC
 main :: IO ()
 main = do
     connect
@@ -10,4 +10,5 @@ main = do
     y <- get "apple"
     print x
     print y
+    runGc
     disconnect
