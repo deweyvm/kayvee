@@ -93,7 +93,8 @@ getSize path =
 
 put :: String -> String -> IO ()
 put s v = do
-    size <- fromIntegral <$> getSize schemaPath
+    size <- fromIntegral <$> getSize dbPath
+    print $ "File size is " ++ show size
     BL.appendFile schemaPath $ runPut $ hashPut s size
     BL.appendFile dbPath $ runPut $ rawPut s v
 
@@ -109,23 +110,24 @@ hashPut s p = do
 rawPut :: String -> String -> Put
 rawPut s v = do
     let ss = toPointer $ (genericLength s)
-    putWord64be ss
+    traceShow ss $ putWord64be ss
     let ps = pack s
-    putByteString ps
+    traceShow ps $ putByteString ps
     let sv = toPointer $ (genericLength v)
-    putWord64be sv
+    traceShow sv $ putWord64be sv
     let pv = pack v
-    putByteString pv
+    traceShow pv $ putByteString pv
 
 readAt :: FilePath
        -> Pointer --position
        -> Pointer --size of data to read
        -> IO BL.ByteString
 readAt fp pos size = do
+    print $ "reading " ++ show size ++ " bytes starting from " ++ show pos
     h <- openBinaryFile fp ReadMode
     hSeek h AbsoluteSeek (toInteger pos)
     chars <- getChars h (toInteger size)
-
+    hClose h
     return $ (traceShow chars) $ BL.pack (BS.c2w <$> chars)
 
 bsToSize :: BL.ByteString -> Word64
@@ -161,6 +163,7 @@ toString x = BS.w2c <$> BL.unpack x
 
 findKey :: FilePath -> String -> [Pointer] -> IO (Maybe Pointer)
 findKey fp s (x:xs) = do
+    print $ "Going to position " ++ show x
     size <- bsToSize <$> readAt fp x 8
     bs <- readAt fp (x + 8) size
     let string = toString bs
