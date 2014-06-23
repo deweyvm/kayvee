@@ -18,7 +18,8 @@ import System.IO
 import System.IO.Error hiding (catch)
 import System.Posix.Types
 import System.Posix.Files
-import Debug.Trace
+
+import Database.Kayvee.Log
 
 type Hash = (Word32, Word32, Word32, Word32)
 
@@ -64,12 +65,13 @@ readAt :: FilePath
        -> Word64 --size of data to read
        -> IO BL.ByteString
 readAt fp pos size = do
-    print $ "reading " ++ show size ++ " bytes starting from " ++ show pos
+    logAll $ "Reading " ++ show size ++ " bytes starting from " ++ show pos
     h <- openBinaryFile fp ReadMode
     hSeek h AbsoluteSeek (toInteger pos)
     chars <- getChars h (toInteger size)
     hClose h
-    return $ (trace ("Read data " ++ show chars)) $ BL.pack (toWord8List chars)
+    logAll $ "Read data " ++ show chars
+    return $ BL.pack (toWord8List chars)
 
 getChars :: Handle -> Integer -> IO [Char]
 getChars h i = do
@@ -118,13 +120,13 @@ hashPut s p = do
 valuePut :: String -> String -> Put
 valuePut s v = do
     let ss = toPointer $ (genericLength s)
-    trace ("Putting value: " ++ show ss) $ putWord64be ss
+    uLogAll ("Putting value: " ++ show ss) $ putWord64be ss
     let ps = pack s
-    trace ("Putting value: " ++ show ps) $ putByteString ps
+    uLogAll ("Putting value: " ++ show ps) $ putByteString ps
     let sv = toPointer $ (genericLength v)
-    trace ("Putting value: " ++ show sv) $ putWord64be sv
+    uLogAll ("Putting value: " ++ show sv) $ putWord64be sv
     let pv = pack v
-    trace ("Putting value: " ++ show pv) $ putByteString pv
+    uLogAll ("Putting value: " ++ show pv) $ putByteString pv
 
 
 

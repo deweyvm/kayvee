@@ -10,6 +10,7 @@ import Data.Binary.Put
 
 import Database.Kayvee.Kayvee
 import Database.Kayvee.Common
+import Database.Kayvee.Log
 
 tempSchema :: FilePath
 tempSchema = "db.schema.temp"
@@ -27,7 +28,7 @@ iterateSchema f = do
     totalSize <- cast <$> getSize fp :: IO Pointer
     let numEntries = fromInteger $ (toInteger totalSize) `div` (toInteger entrySize)
     --assert totalSize `rem` schemaEntrySize == 0
-    putStrLn $ "Number of entries is " ++ show numEntries
+    logAll $ "Number of entries is " ++ show numEntries
     let helper i = do
             let offset = cast $ (i + 1) * entrySize :: Pointer
             if i > numEntries - 1
@@ -61,7 +62,7 @@ hasKey key = do
 -- | Get a key at the given position in the current database
 getKey :: Pointer -> IO String
 getKey ptr = do
-    size <- bsToSize <$> readAt dbPath {-??-} ptr ptrSize
+    size <- bsToSize <$> readAt dbPath ptr ptrSize
     toString <$> readAt dbPath (ptr + ptrSize) size
 
 addKey :: String -> IO ()
@@ -83,7 +84,7 @@ insertValue key value =
 
 processKey :: Hash -> Pointer -> IO ()
 processKey hash ptr = do
-    putStrLn $ "GC found: " ++ show hash ++ " " ++ show ptr
+    logAll $ "GC found: " ++ show hash ++ " " ++ show ptr
     key <- getKey ptr
     exists <- hasKey key
     if exists

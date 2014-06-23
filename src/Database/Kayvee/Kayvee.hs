@@ -11,7 +11,7 @@ import Data.ByteString.Char8 (pack)
 import Debug.Trace
 
 import Database.Kayvee.Common
-
+import Database.Kayvee.Log
 
 
 schemaPath :: FilePath
@@ -24,7 +24,7 @@ dbPath = "db.store"
 getOffsets :: Hash -> IO [Pointer]
 getOffsets hash = do
     h <- BL.readFile schemaPath
-    return $ runGet (findOffsets hash) h
+    return $ reverse $ runGet (findOffsets hash) h
 
 findOffsets :: Hash -> Get [Pointer]
 findOffsets hash = do
@@ -54,7 +54,7 @@ disconnect = return ()
 put :: String -> String -> IO ()
 put s v = do
     size <- fromIntegral <$> getSize dbPath
-    print $ "File size is " ++ show size
+    logAll $ "File size is " ++ show size
     BL.appendFile schemaPath $ runPut $ hashPut s size
     BL.appendFile dbPath $ runPut $ valuePut s v
 
@@ -69,7 +69,7 @@ readValue fp ptr = do
 
 findKey :: FilePath -> String -> [Pointer] -> IO (Maybe Pointer)
 findKey fp s (x:xs) = do
-    print $ "Going to position " ++ show x
+    logAll $ "Going to position " ++ show x
     size <- bsToSize <$> readAt fp x 8
     bs <- readAt fp (x + 8) size
     let string = toString bs
